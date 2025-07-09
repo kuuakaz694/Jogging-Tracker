@@ -60,6 +60,39 @@
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
+    #calendarModal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #calendarContent {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+      text-align: center;
+    }
+    .calendar-day {
+      padding: 0.5rem;
+      border-radius: 6px;
+    }
+    .today { background: #ffecb3; }
+    .mark-yellow { background: #fff176; }
+    .mark-orange { background: #ffb74d; }
+    .mark-green { background: #81c784; }
+    .mark-blue { background: #64b5f6; }
+    .mark-purple { background: #ba68c8; }
   </style>
 </head>
 <body>
@@ -74,12 +107,19 @@
     <div>経過時間：<span id="duration">00:00:00</span></div>
   </div>
   <div class="calendar">
-    <h3>履歴カレンダー</h3>
+    <h3 style="cursor:pointer;" onclick="showCalendar()">履歴カレンダーを開く</h3>
     <div id="history"></div>
   </div>
   <div class="chart-section">
     <h3>走行距離の推移</h3>
     <canvas id="distanceChart" height="200"></canvas>
+  </div>
+
+  <div id="calendarModal" onclick="this.style.display='none'">
+    <div id="calendarContent" onclick="event.stopPropagation()">
+      <h3>ジョギング履歴カレンダー</h3>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -231,6 +271,52 @@
           scales: { y: { beginAtZero: true } }
         }
       });
+    }
+
+    function showCalendar() {
+      const calendarGrid = document.getElementById("calendarGrid");
+      const history = JSON.parse(localStorage.getItem("joggingHistory") || "[]");
+      const historyMap = {};
+      history.forEach(h => { historyMap[h.date] = h.distance });
+
+      calendarGrid.innerHTML = "";
+
+      const today = new Date();
+      const startYear = today.getFullYear() - 10;
+      const endYear = today.getFullYear();
+
+      for (let y = endYear; y >= startYear; y--) {
+        for (let m = 0; m < 12; m++) {
+          const daysInMonth = new Date(y, m + 1, 0).getDate();
+          const firstDay = new Date(y, m, 1).getDay();
+
+          const monthHeader = document.createElement("h4");
+          monthHeader.textContent = `${y}年${m + 1}月`;
+          calendarGrid.appendChild(monthHeader);
+
+          for (let i = 0; i < firstDay; i++) {
+            calendarGrid.innerHTML += '<div></div>';
+          }
+
+          for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const div = document.createElement("div");
+            div.className = "calendar-day";
+            div.innerText = d;
+            if (dateStr === today.toISOString().split('T')[0]) div.classList.add("today");
+            const dist = parseFloat(historyMap[dateStr] || 0);
+            if (dist > 0) {
+              if (dist < 3) div.classList.add("mark-yellow");
+              else if (dist < 5) div.classList.add("mark-orange");
+              else if (dist < 7) div.classList.add("mark-green");
+              else if (dist < 10) div.classList.add("mark-blue");
+              else div.classList.add("mark-purple");
+            }
+            calendarGrid.appendChild(div);
+          }
+        }
+      }
+      document.getElementById("calendarModal").style.display = "flex";
     }
 
     if ('serviceWorker' in navigator) {
