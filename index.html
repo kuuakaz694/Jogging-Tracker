@@ -94,6 +94,24 @@
     .mark-green { background: #81c784; }
     .mark-blue { background: #64b5f6; }
     .mark-purple { background: #ba68c8; }
+
+        /* タッチ対応の改善 */
+    .calendar h3 {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    }
+
+    /* ボタンのタッチ領域を拡大 */
+    .controls button {
+    touch-action: manipulation;
+    min-height: 44px; /* iOSの推奨タッチサイズ */
+    }
+
   </style>
 </head>
 <body>
@@ -108,7 +126,7 @@
     <div>経過時間：<span id="duration">00:00:00</span></div>
   </div>
   <div class="calendar">
-    <h3 style="cursor:pointer;" onclick="showCalendar()">履歴カレンダーを開く</h3>
+    <h3 style="cursor:pointer;" onclick="showCalendar()" ontouchstart="showCalendar()">履歴カレンダーを開く</h3>
     <div id="history"></div>
   </div>
   <div class="chart-section">
@@ -136,13 +154,22 @@
     let currentYear, currentMonth;
 
     window.onload = () => {
-      initMap();
-      renderHistory();
-      renderChart();
-      const today = new Date();
-      currentYear = today.getFullYear();
-      currentMonth = today.getMonth();
+    initMap();
+    renderHistory();
+    renderChart();
+    const today = new Date();
+    currentYear = today.getFullYear();
+    currentMonth = today.getMonth();
+    
+    // タッチイベントリスナーを追加
+    const calendarHeader = document.querySelector('.calendar h3');
+    if (calendarHeader) {
+        calendarHeader.addEventListener('touchstart', showCalendar, {passive: true});
+        calendarHeader.addEventListener('click', showCalendar);
+    }
     };
+    
+
 
     function initMap() {
       map = L.map('map').setView([35.681236, 139.767125], 16);
