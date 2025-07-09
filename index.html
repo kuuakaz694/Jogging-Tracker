@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>ジョギングトラッカー</title>
+  <title>ジョギングトラッカー（Leaflet版）</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+z0pCfyyXxz0FUf1Rt8FqD0znYox3+AHj8jStjC2Q=" crossorigin=""/>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "Helvetica Neue", sans-serif;
@@ -83,17 +82,27 @@
     <canvas id="distanceChart" height="200"></canvas>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o+g0sK3cn1LhXk18o6vZTQkZz0oEItq+kHf48CgfO3E=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     let map, watchId, path = [], polyline;
     let distance = 0;
     let startTime;
     let timer;
+    let chart;
+
+    window.onload = () => {
+      initMap();
+      renderHistory();
+      renderChart();
+    };
 
     function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 16,
-        center: { lat: 35.681236, lng: 139.767125 },
-      });
+      map = L.map('map').setView([35.681236, 139.767125], 16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+      polyline = L.polyline([], { color: '#1e88e5' }).addTo(map);
     }
 
     function startTracking() {
@@ -103,28 +112,15 @@
         document.getElementById("distance").innerText = "0.00";
         startTime = new Date();
         timer = setInterval(updateDuration, 1000);
-        polyline = new google.maps.Polyline({
-          path: [],
-          map: map,
-          strokeColor: "#1e88e5",
-          strokeOpacity: 1.0,
-          strokeWeight: 4,
-        });
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
-            const latlng = {
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-            };
+            const latlng = [pos.coords.latitude, pos.coords.longitude];
             path.push(latlng);
-            polyline.setPath(path);
-            map.setCenter(latlng);
+            polyline.setLatLngs(path);
+            map.setView(latlng);
             if (path.length > 1) {
               const prev = path[path.length - 2];
-              const d = google.maps.geometry.spherical.computeDistanceBetween(
-                new google.maps.LatLng(prev.lat, prev.lng),
-                new google.maps.LatLng(latlng.lat, latlng.lng)
-              );
+              const d = map.distance(prev, latlng);
               distance += d;
               document.getElementById("distance").innerText = (distance / 1000).toFixed(2);
             }
@@ -186,7 +182,8 @@
       const history = JSON.parse(localStorage.getItem("joggingHistory") || "[]");
       const labels = history.map(h => h.date);
       const data = history.map(h => h.distance);
-      new Chart(ctx, {
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
         type: 'line',
         data: {
           labels: labels,
@@ -200,16 +197,8 @@
         },
         options: {
           responsive: true,
-          plugins: {
-            legend: {
-              display: true
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true
-            }
-          }
+          plugins: { legend: { display: true } },
+          scales: { y: { beginAtZero: true } }
         }
       });
     }
@@ -219,15 +208,6 @@
         navigator.serviceWorker.register('service-worker.js');
       });
     }
-
-    window.onload = () => {
-      renderHistory();
-      renderChart();
-    };
   </script>
-  <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAQeG8y9CopKgrJag_qEe5jvkPmUxj6BK0&libraries=geometry&callback=initMap">
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
